@@ -48,6 +48,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -59,7 +60,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class DefaultChannelPipelineTest {
 
@@ -175,6 +183,52 @@ public class DefaultChannelPipelineTest {
         assertNull(pipeline.get("handler2"));
         pipeline.remove(handler3);
         assertNull(pipeline.get("handler3"));
+    }
+
+    @Test
+    public void testRemoveIfExists() {
+        DefaultChannelPipeline pipeline = new DefaultChannelPipeline(new LocalChannel());
+
+        ChannelHandler handler1 = newHandler();
+        ChannelHandler handler2 = newHandler();
+        ChannelHandler handler3 = newHandler();
+
+        pipeline.addLast("handler1", handler1);
+        pipeline.addLast("handler2", handler2);
+        pipeline.addLast("handler3", handler3);
+
+        assertNotNull(pipeline.removeIfExists(handler1));
+        assertNull(pipeline.get("handler1"));
+
+        assertNotNull(pipeline.removeIfExists("handler2"));
+        assertNull(pipeline.get("handler2"));
+
+        assertNotNull(pipeline.removeIfExists(TestHandler.class));
+        assertNull(pipeline.get("handler3"));
+    }
+
+    @Test
+    public void testRemoveIfExistsDoesNotThrowException() {
+        DefaultChannelPipeline pipeline = new DefaultChannelPipeline(new LocalChannel());
+
+        ChannelHandler handler1 = newHandler();
+        ChannelHandler handler2 = newHandler();
+        pipeline.addLast("handler1", handler1);
+
+        assertNull(pipeline.removeIfExists("handlerXXX"));
+        assertNull(pipeline.removeIfExists(handler2));
+        assertNull(pipeline.removeIfExists(ChannelOutboundHandlerAdapter.class));
+        assertNotNull(pipeline.get("handler1"));
+    }
+
+    @Test(expected = NoSuchElementException.class)
+    public void testRemoveThrowNoSuchElementException() {
+        DefaultChannelPipeline pipeline = new DefaultChannelPipeline(new LocalChannel());
+
+        ChannelHandler handler1 = newHandler();
+        pipeline.addLast("handler1", handler1);
+
+        pipeline.remove("handlerXXX");
     }
 
     @Test
@@ -504,6 +558,49 @@ public class DefaultChannelPipelineTest {
         assertTrue(future.isCancelled());
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testWrongPromiseChannel() throws Exception {
+        ChannelPipeline pipeline = new LocalChannel().pipeline();
+        group.register(pipeline.channel()).sync();
+
+        ChannelPipeline pipeline2 = new LocalChannel().pipeline();
+        group.register(pipeline2.channel()).sync();
+
+        try {
+            ChannelPromise promise2 = pipeline2.channel().newPromise();
+            pipeline.close(promise2);
+        } finally {
+            pipeline.close();
+            pipeline2.close();
+        }
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testUnexpectedVoidChannelPromise() throws Exception {
+        ChannelPipeline pipeline = new LocalChannel().pipeline();
+        group.register(pipeline.channel()).sync();
+
+        try {
+            ChannelPromise promise = new VoidChannelPromise(pipeline.channel(), false);
+            pipeline.close(promise);
+        } finally {
+            pipeline.close();
+        }
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testUnexpectedVoidChannelPromiseCloseFuture() throws Exception {
+        ChannelPipeline pipeline = new LocalChannel().pipeline();
+        group.register(pipeline.channel()).sync();
+
+        try {
+            ChannelPromise promise = (ChannelPromise) pipeline.channel().closeFuture();
+            pipeline.close(promise);
+        } finally {
+            pipeline.close();
+        }
+    }
+
     @Test
     public void testCancelDeregister() throws Exception {
         ChannelPipeline pipeline = new LocalChannel().pipeline();
@@ -728,7 +825,7 @@ public class DefaultChannelPipelineTest {
     }
 
     @Test(timeout = 3000)
-    public void testHandlerAddedExceptionFromChildHandlerIsPropegated() {
+    public void testHandlerAddedExceptionFromChildHandlerIsPropagated() {
         final EventExecutorGroup group1 = new DefaultEventExecutorGroup(1);
         try {
             final Promise<Void> promise = group1.next().newPromise();
@@ -752,7 +849,7 @@ public class DefaultChannelPipelineTest {
     }
 
     @Test(timeout = 3000)
-    public void testHandlerRemovedExceptionFromChildHandlerIsPropegated() {
+    public void testHandlerRemovedExceptionFromChildHandlerIsPropagated() {
         final EventExecutorGroup group1 = new DefaultEventExecutorGroup(1);
         try {
             final Promise<Void> promise = group1.next().newPromise();
@@ -1028,6 +1125,92 @@ public class DefaultChannelPipelineTest {
         assertNotNull(executor2);
         assertNotSame(executor1, executor2);
         group.shutdownGracefully(0, 0, TimeUnit.SECONDS);
+    }
+
+    @Test(timeout = 3000)
+    public void testVoidPromiseNotify() throws Throwable {
+        ChannelPipeline pipeline1 = new LocalChannel().pipeline();
+
+        EventLoopGroup defaultGroup = new DefaultEventLoopGroup(1);
+        EventLoop eventLoop1 = defaultGroup.next();
+        final Promise<Throwable> promise = eventLoop1.newPromise();
+        final Exception exception = new IllegalArgumentException();
+        try {
+            eventLoop1.register(pipeline1.channel()).syncUninterruptibly();
+            pipeline1.addLast(new ChannelDuplexHandler() {
+                @Override
+                public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+                    throw exception;
+                }
+
+                @Override
+                public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+                    promise.setSuccess(cause);
+                }
+            });
+            pipeline1.write("test", pipeline1.voidPromise());
+            assertSame(exception, promise.syncUninterruptibly().getNow());
+        } finally {
+            pipeline1.channel().close().syncUninterruptibly();
+            defaultGroup.shutdownGracefully();
+        }
+    }
+
+    @Test(timeout = 5000)
+    public void handlerAddedStateUpdatedBeforeHandlerAddedDoneForceEventLoop() throws InterruptedException {
+        handlerAddedStateUpdatedBeforeHandlerAddedDone(true);
+    }
+
+    @Test(timeout = 5000)
+    public void handlerAddedStateUpdatedBeforeHandlerAddedDoneOnCallingThread() throws InterruptedException {
+        handlerAddedStateUpdatedBeforeHandlerAddedDone(false);
+    }
+
+    private static void handlerAddedStateUpdatedBeforeHandlerAddedDone(boolean executeInEventLoop)
+            throws InterruptedException {
+        final ChannelPipeline pipeline = new LocalChannel().pipeline();
+        final Object userEvent = new Object();
+        final Object writeObject = new Object();
+        final CountDownLatch doneLatch = new CountDownLatch(1);
+
+        group.register(pipeline.channel());
+
+        Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                pipeline.addLast(new ChannelInboundHandlerAdapter() {
+                    @Override
+                    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+                        if (evt == userEvent) {
+                            ctx.write(writeObject);
+                        }
+                        ctx.fireUserEventTriggered(evt);
+                    }
+                });
+                pipeline.addFirst(new ChannelDuplexHandler() {
+                    @Override
+                    public void handlerAdded(ChannelHandlerContext ctx) {
+                        ctx.fireUserEventTriggered(userEvent);
+                    }
+
+                    @Override
+                    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
+                        if (msg == writeObject) {
+                            doneLatch.countDown();
+                        }
+                        ctx.write(msg, promise);
+                    }
+                });
+            }
+        };
+
+        if (executeInEventLoop) {
+            pipeline.channel().eventLoop().execute(r);
+        } else {
+            r.run();
+        }
+
+        doneLatch.await();
     }
 
     private static final class TestTask implements Runnable {

@@ -16,6 +16,7 @@
 
 package io.netty.util.concurrent;
 
+import io.netty.util.Signal;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import org.junit.BeforeClass;
@@ -36,10 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.Math.max;
 import static org.hamcrest.Matchers.lessThan;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("unchecked")
 public class DefaultPromiseTest {
@@ -241,8 +239,40 @@ public class DefaultPromiseTest {
         }
     }
 
-    private void testStackOverFlowChainedFuturesA(int promiseChainLength, final EventExecutor executor,
-                                                  boolean runTestInExecutorThread)
+    @Test
+    public void signalUncancellableCompletionValue() {
+        final Promise<Signal> promise = new DefaultPromise<Signal>(ImmediateEventExecutor.INSTANCE);
+        promise.setSuccess(Signal.valueOf(DefaultPromise.class, "UNCANCELLABLE"));
+        assertTrue(promise.isDone());
+        assertTrue(promise.isSuccess());
+    }
+
+    @Test
+    public void signalSuccessCompletionValue() {
+        final Promise<Signal> promise = new DefaultPromise<Signal>(ImmediateEventExecutor.INSTANCE);
+        promise.setSuccess(Signal.valueOf(DefaultPromise.class, "SUCCESS"));
+        assertTrue(promise.isDone());
+        assertTrue(promise.isSuccess());
+    }
+
+    @Test
+    public void setUncancellableGetNow() {
+        final Promise<String> promise = new DefaultPromise<String>(ImmediateEventExecutor.INSTANCE);
+        assertNull(promise.getNow());
+        assertTrue(promise.setUncancellable());
+        assertNull(promise.getNow());
+        assertFalse(promise.isDone());
+        assertFalse(promise.isSuccess());
+
+        promise.setSuccess("success");
+
+        assertTrue(promise.isDone());
+        assertTrue(promise.isSuccess());
+        assertEquals("success", promise.getNow());
+    }
+
+    private static void testStackOverFlowChainedFuturesA(int promiseChainLength, final EventExecutor executor,
+                                                         boolean runTestInExecutorThread)
             throws InterruptedException {
         final Promise<Void>[] p = new DefaultPromise[promiseChainLength];
         final CountDownLatch latch = new CountDownLatch(promiseChainLength);
@@ -264,8 +294,8 @@ public class DefaultPromiseTest {
         }
     }
 
-    private void testStackOverFlowChainedFuturesA(EventExecutor executor, final Promise<Void>[] p,
-                                                  final CountDownLatch latch) {
+    private static void testStackOverFlowChainedFuturesA(EventExecutor executor, final Promise<Void>[] p,
+                                                         final CountDownLatch latch) {
         for (int i = 0; i < p.length; i ++) {
             final int finalI = i;
             p[i] = new DefaultPromise<Void>(executor);
@@ -283,8 +313,8 @@ public class DefaultPromiseTest {
         p[0].setSuccess(null);
     }
 
-    private void testStackOverFlowChainedFuturesB(int promiseChainLength, final EventExecutor executor,
-                                                  boolean runTestInExecutorThread)
+    private static void testStackOverFlowChainedFuturesB(int promiseChainLength, final EventExecutor executor,
+                                                         boolean runTestInExecutorThread)
             throws InterruptedException {
         final Promise<Void>[] p = new DefaultPromise[promiseChainLength];
         final CountDownLatch latch = new CountDownLatch(promiseChainLength);
@@ -306,8 +336,8 @@ public class DefaultPromiseTest {
         }
     }
 
-    private void testStackOverFlowChainedFuturesB(EventExecutor executor, final Promise<Void>[] p,
-                                                  final CountDownLatch latch) {
+    private static void testStackOverFlowChainedFuturesB(EventExecutor executor, final Promise<Void>[] p,
+                                                         final CountDownLatch latch) {
         for (int i = 0; i < p.length; i ++) {
             final int finalI = i;
             p[i] = new DefaultPromise<Void>(executor);
@@ -458,7 +488,8 @@ public class DefaultPromiseTest {
             }
         });
 
-        assertTrue("Should have notifed " + expectedCount + " listeners", latch.await(5, TimeUnit.SECONDS));
+        assertTrue("Should have notified " + expectedCount + " listeners",
+                   latch.await(5, TimeUnit.SECONDS));
         executor.shutdownGracefully().sync();
     }
 

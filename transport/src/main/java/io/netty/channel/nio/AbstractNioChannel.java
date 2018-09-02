@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.ClosedChannelException;
+import java.nio.channels.ConnectionPendingException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.util.concurrent.ScheduledFuture;
@@ -245,7 +246,8 @@ public abstract class AbstractNioChannel extends AbstractChannel {
 
             try {
                 if (connectPromise != null) {
-                    throw new IllegalStateException("connection attempt already made");
+                    // Already a connect in process.
+                    throw new ConnectionPendingException();
                 }
 
                 boolean wasActive = isActive();
@@ -296,12 +298,16 @@ public abstract class AbstractNioChannel extends AbstractChannel {
                 return;
             }
 
+            // Get the state as trySuccess() may trigger an ChannelFutureListener that will close the Channel.
+            // We still need to ensure we call fireChannelActive() in this case.
+            boolean active = isActive();
+
             // trySuccess() will return false if a user cancelled the connection attempt.
             boolean promiseSet = promise.trySuccess();
 
             // Regardless if the connection attempt was cancelled, channelActive() event should be triggered,
             // because what happened is what happened.
-            if (!wasActive && isActive()) {
+            if (!wasActive && active) {
                 pipeline().fireChannelActive();
             }
 
@@ -350,10 +356,9 @@ public abstract class AbstractNioChannel extends AbstractChannel {
             // Flush immediately only when there's no pending flush.
             // If there's a pending flush operation, event loop will call forceFlush() later,
             // and thus there's no need to call it now.
-            if (isFlushPending()) {
-                return;
+            if (!isFlushPending()) {
+                super.flush0();
             }
-            super.flush0();
         }
 
         @Override
@@ -378,7 +383,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         boolean selected = false;
         for (;;) {
             try {
-                selectionKey = javaChannel().register(eventLoop().selector, 0, this);
+                selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
                 return;
             } catch (CancelledKeyException e) {
                 if (!selected) {

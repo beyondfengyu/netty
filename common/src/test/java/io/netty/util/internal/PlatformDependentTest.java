@@ -17,14 +17,13 @@ package io.netty.util.internal;
 
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.util.Random;
 
 import static io.netty.util.internal.PlatformDependent.hashCodeAscii;
 import static io.netty.util.internal.PlatformDependent.hashCodeAsciiSafe;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 
 public class PlatformDependentTest {
     private static final Random r = new Random();
@@ -48,11 +47,25 @@ public class PlatformDependentTest {
         });
     }
 
+    @Test
+    public void testIsZero() {
+        byte[] bytes = new byte[100];
+        assertTrue(PlatformDependent.isZero(bytes, 0, 0));
+        assertTrue(PlatformDependent.isZero(bytes, 0, -1));
+        assertTrue(PlatformDependent.isZero(bytes, 0, 100));
+        assertTrue(PlatformDependent.isZero(bytes, 10, 90));
+        bytes[10] = 1;
+        assertTrue(PlatformDependent.isZero(bytes, 0, 10));
+        assertFalse(PlatformDependent.isZero(bytes, 0, 11));
+        assertFalse(PlatformDependent.isZero(bytes, 10, 1));
+        assertTrue(PlatformDependent.isZero(bytes, 11, 89));
+    }
+
     private interface EqualityChecker {
         boolean equals(byte[] bytes1, int startPos1, byte[] bytes2, int startPos2, int length);
     }
 
-    private void testEquals(EqualityChecker equalsChecker) {
+    private static void testEquals(EqualityChecker equalsChecker) {
         byte[] bytes1 = {'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd'};
         byte[] bytes2 = {'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd'};
         assertNotSame(bytes1, bytes2);
@@ -104,6 +117,9 @@ public class PlatformDependentTest {
             bytes2 = bytes1.clone();
             assertTrue(equalsChecker.equals(bytes1, 0, bytes2, 0, bytes1.length));
         }
+
+        assertTrue(equalsChecker.equals(bytes1, 0, bytes2, 0, 0));
+        assertTrue(equalsChecker.equals(bytes1, 0, bytes2, 0, -1));
     }
 
     private static char randomCharInByteRange() {
@@ -128,5 +144,14 @@ public class PlatformDependentTest {
                     hashCodeAscii(bytes, 0, bytes.length),
                     hashCodeAscii(string));
         }
+    }
+
+    @Test
+    public void testAllocateWithCapacity0() {
+        assumeTrue(PlatformDependent.hasDirectBufferNoCleanerConstructor());
+        ByteBuffer buffer = PlatformDependent.allocateDirectNoCleaner(0);
+        assertNotEquals(0, PlatformDependent.directBufferAddress(buffer));
+        assertEquals(0, buffer.capacity());
+        PlatformDependent.freeDirectNoCleaner(buffer);
     }
 }

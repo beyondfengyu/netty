@@ -15,21 +15,25 @@
  */
 package io.netty.handler.ssl;
 
-import org.apache.tomcat.jni.SSL;
+import io.netty.internal.tcnative.SSL;
 
 import javax.net.ssl.SSLException;
+import javax.net.ssl.X509ExtendedKeyManager;
 import javax.net.ssl.X509KeyManager;
 import javax.security.auth.x500.X500Principal;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+
 
 /**
  * Manages key material for {@link OpenSslEngine}s and so set the right {@link PrivateKey}s and
  * {@link X509Certificate}s.
  */
-class OpenSslKeyMaterialManager {
+final class OpenSslKeyMaterialManager {
 
     // Code in this class is inspired by code of conscrypts:
     // - https://android.googlesource.com/platform/external/
@@ -55,67 +59,77 @@ class OpenSslKeyMaterialManager {
         KEY_TYPES.put("DH_RSA", KEY_TYPE_DH_RSA);
     }
 
-    private final X509KeyManager keyManager;
-    private final String password;
+    private final OpenSslKeyMaterialProvider provider;
 
-    OpenSslKeyMaterialManager(X509KeyManager keyManager, String password) {
-        this.keyManager = keyManager;
-        this.password = password;
+    OpenSslKeyMaterialManager(OpenSslKeyMaterialProvider provider) {
+        this.provider = provider;
     }
 
-    void setKeyMaterial(OpenSslEngine engine) throws SSLException {
+    void setKeyMaterialServerSide(ReferenceCountedOpenSslEngine engine) throws SSLException {
         long ssl = engine.sslPointer();
         String[] authMethods = SSL.authenticationMethods(ssl);
+        Set<String> aliases = new HashSet<String>(authMethods.length);
         for (String authMethod : authMethods) {
             String type = KEY_TYPES.get(authMethod);
             if (type != null) {
-                setKeyMaterial(ssl, chooseServerAlias(engine, type));
+                String alias = chooseServerAlias(engine, type);
+                if (alias != null && aliases.add(alias)) {
+                    OpenSslKeyMaterial keyMaterial = null;
+                    try {
+                        keyMaterial = provider.chooseKeyMaterial(engine.alloc, alias);
+                        if (keyMaterial != null) {
+                            SSL.setKeyMaterialServerSide(
+                                    ssl, keyMaterial.certificateChainAddress(), keyMaterial.privateKeyAddress());
+                        }
+                    } catch (SSLException e) {
+                        throw e;
+                    } catch (Exception e) {
+                        throw new SSLException(e);
+                    } finally {
+                        if (keyMaterial != null) {
+                            keyMaterial.release();
+                        }
+                    }
+                }
             }
         }
     }
 
-    void setKeyMaterial(OpenSslEngine engine, String[] keyTypes, X500Principal[] issuer) throws SSLException {
-        setKeyMaterial(engine.sslPointer(), chooseClientAlias(engine, keyTypes, issuer));
-    }
-
-    private void setKeyMaterial(long ssl, String alias) throws SSLException {
-        long keyBio = 0;
-        long keyCertChainBio = 0;
+    void setKeyMaterialClientSide(ReferenceCountedOpenSslEngine engine, long certOut, long keyOut, String[] keyTypes,
+                                  X500Principal[] issuer) throws SSLException {
+        String alias = chooseClientAlias(engine, keyTypes, issuer);
+        OpenSslKeyMaterial keyMaterial = null;
         try {
-            // TODO: Should we cache these and so not need to do a memory copy all the time ?
-            PrivateKey key = keyManager.getPrivateKey(alias);
-            X509Certificate[] certificates = keyManager.getCertificateChain(alias);
-
-            if (certificates != null && certificates.length != 0) {
-                keyCertChainBio = OpenSslContext.toBIO(keyManager.getCertificateChain(alias));
-                if (key != null) {
-                    keyBio = OpenSslContext.toBIO(key);
-                }
-                SSL.setCertificateBio(ssl, keyCertChainBio, keyBio, password);
-
-                // We may have more then one cert in the chain so add all of them now.
-                SSL.setCertificateChainBio(ssl, keyCertChainBio, false);
+            keyMaterial = provider.chooseKeyMaterial(engine.alloc, alias);
+            if (keyMaterial != null) {
+                SSL.setKeyMaterialClientSide(engine.sslPointer(), certOut, keyOut,
+                        keyMaterial.certificateChainAddress(), keyMaterial.privateKeyAddress());
             }
         } catch (SSLException e) {
             throw e;
         } catch (Exception e) {
             throw new SSLException(e);
         } finally {
-            if (keyBio != 0) {
-                SSL.freeBIO(keyBio);
-            }
-            if (keyCertChainBio != 0) {
-                SSL.freeBIO(keyCertChainBio);
+            if (keyMaterial != null) {
+                keyMaterial.release();
             }
         }
     }
 
-    protected String chooseClientAlias(@SuppressWarnings("unused") OpenSslEngine engine,
+    private String chooseClientAlias(ReferenceCountedOpenSslEngine engine,
                                        String[] keyTypes, X500Principal[] issuer) {
-        return keyManager.chooseClientAlias(keyTypes, issuer, null);
+        X509KeyManager manager = provider.keyManager();
+        if (manager instanceof X509ExtendedKeyManager) {
+            return ((X509ExtendedKeyManager) manager).chooseEngineClientAlias(keyTypes, issuer, engine);
+        }
+        return manager.chooseClientAlias(keyTypes, issuer, null);
     }
 
-    protected String chooseServerAlias(@SuppressWarnings("unused") OpenSslEngine engine, String type) {
-        return keyManager.chooseServerAlias(type, null, null);
+    private String chooseServerAlias(ReferenceCountedOpenSslEngine engine, String type) {
+        X509KeyManager manager = provider.keyManager();
+        if (manager instanceof X509ExtendedKeyManager) {
+            return ((X509ExtendedKeyManager) manager).chooseEngineServerAlias(type, null, engine);
+        }
+        return manager.chooseServerAlias(type, null, null);
     }
 }

@@ -15,31 +15,23 @@
 package io.netty.handler.codec;
 
 import io.netty.util.HashingStrategy;
-import io.netty.util.concurrent.FastThreadLocal;
-import io.netty.util.internal.SystemPropertyUtil;
 
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.TimeZone;
 
 import static io.netty.util.HashingStrategy.JAVA_HASHER;
 import static io.netty.util.internal.MathUtil.findNextPositivePowerOfTwo;
 import static io.netty.util.internal.ObjectUtil.checkNotNull;
-import static java.lang.Math.min;
 import static java.lang.Math.max;
+import static java.lang.Math.min;
 
 /**
  * Default implementation of {@link Headers};
@@ -180,6 +172,15 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
             e = e.next;
         }
         return values;
+    }
+
+    /**
+     * Equivalent to {@link #getAll(Object)} but no intermediate list is generated.
+     * @param name the name of the header to retrieve
+     * @return an {@link Iterator} of header values corresponding to {@code name}.
+     */
+    public Iterator<V> valueIterator(K name) {
+        return new ValueIterator(name);
     }
 
     @Override
@@ -336,8 +337,8 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
 
     @Override
     public T addObject(K name, Object... values) {
-        for (int i = 0; i < values.length; i++) {
-            addObject(name, values[i]);
+        for (Object value: values) {
+            addObject(name, value);
         }
         return thisT();
     }
@@ -602,7 +603,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Boolean getBoolean(K name) {
         V v = get(name);
-        return v != null ? valueConverter.convertToBoolean(v) : null;
+        try {
+            return v != null ? valueConverter.convertToBoolean(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -614,7 +619,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Byte getByte(K name) {
         V v = get(name);
-        return v != null ? valueConverter.convertToByte(v) : null;
+        try {
+            return v != null ? valueConverter.convertToByte(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -626,7 +635,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Character getChar(K name) {
         V v = get(name);
-        return v != null ? valueConverter.convertToChar(v) : null;
+        try {
+            return v != null ? valueConverter.convertToChar(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -638,7 +651,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Short getShort(K name) {
         V v = get(name);
-        return v != null ? valueConverter.convertToShort(v) : null;
+        try {
+            return v != null ? valueConverter.convertToShort(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -650,7 +667,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Integer getInt(K name) {
         V v = get(name);
-        return v != null ? valueConverter.convertToInt(v) : null;
+        try {
+            return v != null ? valueConverter.convertToInt(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -662,7 +683,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Long getLong(K name) {
         V v = get(name);
-        return v != null ? valueConverter.convertToLong(v) : null;
+        try {
+            return v != null ? valueConverter.convertToLong(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -674,7 +699,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Float getFloat(K name) {
         V v = get(name);
-        return v != null ? valueConverter.convertToFloat(v) : null;
+        try {
+            return v != null ? valueConverter.convertToFloat(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -686,7 +715,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Double getDouble(K name) {
         V v = get(name);
-        return v != null ? valueConverter.convertToDouble(v) : null;
+        try {
+            return v != null ? valueConverter.convertToDouble(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -698,7 +731,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Long getTimeMillis(K name) {
         V v = get(name);
-        return v != null ? valueConverter.convertToTimeMillis(v) : null;
+        try {
+            return v != null ? valueConverter.convertToTimeMillis(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -710,7 +747,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Boolean getBooleanAndRemove(K name) {
         V v = getAndRemove(name);
-        return v != null ? valueConverter.convertToBoolean(v) : null;
+        try {
+            return v != null ? valueConverter.convertToBoolean(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -722,7 +763,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Byte getByteAndRemove(K name) {
         V v = getAndRemove(name);
-        return v != null ? valueConverter.convertToByte(v) : null;
+        try {
+            return v != null ? valueConverter.convertToByte(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -734,12 +779,9 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Character getCharAndRemove(K name) {
         V v = getAndRemove(name);
-        if (v == null) {
-            return null;
-        }
         try {
-            return valueConverter.convertToChar(v);
-        } catch (Throwable ignored) {
+            return v != null ? valueConverter.convertToChar(v) : null;
+        } catch (RuntimeException ignore) {
             return null;
         }
     }
@@ -753,7 +795,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Short getShortAndRemove(K name) {
         V v = getAndRemove(name);
-        return v != null ? valueConverter.convertToShort(v) : null;
+        try {
+            return v != null ? valueConverter.convertToShort(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -765,7 +811,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Integer getIntAndRemove(K name) {
         V v = getAndRemove(name);
-        return v != null ? valueConverter.convertToInt(v) : null;
+        try {
+            return v != null ? valueConverter.convertToInt(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -777,7 +827,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Long getLongAndRemove(K name) {
         V v = getAndRemove(name);
-        return v != null ? valueConverter.convertToLong(v) : null;
+        try {
+            return v != null ? valueConverter.convertToLong(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -789,7 +843,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Float getFloatAndRemove(K name) {
         V v = getAndRemove(name);
-        return v != null ? valueConverter.convertToFloat(v) : null;
+        try {
+            return v != null ? valueConverter.convertToFloat(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -801,7 +859,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Double getDoubleAndRemove(K name) {
         V v = getAndRemove(name);
-        return v != null ? valueConverter.convertToDouble(v) : null;
+        try {
+            return v != null ? valueConverter.convertToDouble(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -813,7 +875,11 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     @Override
     public Long getTimeMillisAndRemove(K name) {
         V v = getAndRemove(name);
-        return v != null ? valueConverter.convertToTimeMillis(v) : null;
+        try {
+            return v != null ? valueConverter.convertToTimeMillis(v) : null;
+        } catch (RuntimeException ignore) {
+            return null;
+        }
     }
 
     @Override
@@ -888,17 +954,7 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder(getClass().getSimpleName()).append('[');
-        String separator = "";
-        for (K name : names()) {
-            List<V> values = getAll(name);
-            for (int i = 0; i < values.size(); ++i) {
-                builder.append(separator);
-                builder.append(name).append(": ").append(values.get(i));
-                separator = ", ";
-            }
-        }
-        return builder.append(']').toString();
+        return HeadersUtils.toString(getClass(), iterator(), size());
     }
 
     protected HeaderEntry<K, V> newHeaderEntry(int h, K name, V value, HeaderEntry<K, V> next) {
@@ -962,74 +1018,13 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
     }
 
     /**
-     * This {@link DateFormat} decodes 3 formats of {@link Date}.
-     *
-     * <ul>
-     * <li>Sun, 06 Nov 1994 08:49:37 GMT: standard specification, the only one with valid generation</li>
-     * <li>Sun, 06 Nov 1994 08:49:37 GMT: obsolete specification</li>
-     * <li>Sun Nov 6 08:49:37 1994: obsolete specification</li>
-     * </ul>
+     * Returns a deep copy of this instance.
      */
-    public static final class HeaderDateFormat {
-        private static final FastThreadLocal<HeaderDateFormat> dateFormatThreadLocal =
-                new FastThreadLocal<HeaderDateFormat>() {
-                    @Override
-                    protected HeaderDateFormat initialValue() {
-                        return new HeaderDateFormat();
-                    }
-                };
-
-        static HeaderDateFormat get() {
-            return dateFormatThreadLocal.get();
-        }
-
-        /**
-         * Standard date format:
-         *
-         * <pre>
-         * Sun, 06 Nov 1994 08:49:37 GMT -> E, d MMM yyyy HH:mm:ss z
-         * </pre>
-         */
-        private final DateFormat dateFormat1 = new SimpleDateFormat("E, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH);
-
-        /**
-         * First obsolete format:
-         *
-         * <pre>
-         * Sunday, 06-Nov-94 08:49:37 GMT -> E, d-MMM-y HH:mm:ss z
-         * </pre>
-         */
-        private final DateFormat dateFormat2 = new SimpleDateFormat("E, dd-MMM-yy HH:mm:ss z", Locale.ENGLISH);
-
-        /**
-         * Second obsolete format
-         *
-         * <pre>
-         * Sun Nov 6 08:49:37 1994 -> EEE, MMM d HH:mm:ss yyyy
-         * </pre>
-         */
-        private final DateFormat dateFormat3 = new SimpleDateFormat("E MMM d HH:mm:ss yyyy", Locale.ENGLISH);
-
-        private HeaderDateFormat() {
-            TimeZone tz = TimeZone.getTimeZone("GMT");
-            dateFormat1.setTimeZone(tz);
-            dateFormat2.setTimeZone(tz);
-            dateFormat3.setTimeZone(tz);
-        }
-
-        long parse(String text) throws ParseException {
-            Date date = dateFormat1.parse(text);
-            if (date == null) {
-                date = dateFormat2.parse(text);
-            }
-            if (date == null) {
-                date = dateFormat3.parse(text);
-            }
-            if (date == null) {
-                throw new ParseException(text, 0);
-            }
-            return date.getTime();
-        }
+    public DefaultHeaders<K, V, T> copy() {
+        DefaultHeaders<K, V, T> copy = new DefaultHeaders<K, V, T>(
+                hashingStrategy, valueConverter, nameValidator, entries.length);
+        copy.addImpl(this);
+        return copy;
     }
 
     private final class HeaderIterator implements Iterator<Map.Entry<K, V>> {
@@ -1053,7 +1048,50 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
 
         @Override
         public void remove() {
-            throw new UnsupportedOperationException("read-only iterator");
+            throw new UnsupportedOperationException("read only");
+        }
+    }
+
+    private final class ValueIterator implements Iterator<V> {
+        private final K name;
+        private final int hash;
+        private HeaderEntry<K, V> next;
+
+        ValueIterator(K name) {
+            this.name = checkNotNull(name, "name");
+            hash = hashingStrategy.hashCode(name);
+            calculateNext(entries[index(hash)]);
+        }
+
+        @Override
+        public boolean hasNext() {
+            return next != null;
+        }
+
+        @Override
+        public V next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            HeaderEntry<K, V> current = next;
+            calculateNext(next.next);
+            return current.value;
+        }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException("read only");
+        }
+
+        private void calculateNext(HeaderEntry<K, V> entry) {
+            while (entry != null) {
+                if (entry.hash == hash && hashingStrategy.equals(name, entry.key)) {
+                    next = entry;
+                    return;
+                }
+                entry = entry.next;
+            }
+            next = null;
         }
     }
 
@@ -1131,6 +1169,21 @@ public class DefaultHeaders<K, V, T extends Headers<K, V, T>> implements Headers
         @Override
         public final String toString() {
             return key.toString() + '=' + value.toString();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof Map.Entry)) {
+                return false;
+            }
+            Map.Entry<?, ?> other = (Map.Entry<?, ?>) o;
+            return (getKey() == null ? other.getKey() == null : getKey().equals(other.getKey()))  &&
+                   (getValue() == null ? other.getValue() == null : getValue().equals(other.getValue()));
+        }
+
+        @Override
+        public int hashCode() {
+            return (key == null ? 0 : key.hashCode()) ^ (value == null ? 0 : value.hashCode());
         }
     }
 }
