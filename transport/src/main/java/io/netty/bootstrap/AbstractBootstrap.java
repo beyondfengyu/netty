@@ -272,14 +272,14 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
     }
 
     /**
-     * TODO 1、初始化Channel并注册到EventLoop
-     * TODO 2、
+     * TODO 1、初始化Channel并注册到EventLoop，并启动EventLoop中的线程和Selecter循环
+     * TODO 2、绑定端口监听，
      *
      * @param localAddress
      * @return
      */
     private ChannelFuture doBind(final SocketAddress localAddress) {
-        // TODO 初始化Channel并注册到EventLoop
+        // TODO 1、初始化Channel并注册到EventLoop
         final ChannelFuture regFuture = initAndRegister();
         final Channel channel = regFuture.channel();
         if (regFuture.cause() != null) {
@@ -289,7 +289,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
         if (regFuture.isDone()) {
             // At this point we know that the registration was complete and successful.
             ChannelPromise promise = channel.newPromise();
-            // TODO 绑定端口监听
+            // TODO 2、绑定端口监听
             doBind0(regFuture, channel, localAddress, promise);
             return promise;
         } else {

@@ -574,6 +574,10 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
             boolean wasActive = isActive();
             try {
+                /**
+                 * TODO 这里把端口绑定到JDK的channel上监听
+                 * TODO 实现类为：{@link NioServerSocketChannel}
+                 */
                 doBind(localAddress);
             } catch (Throwable t) {
                 safeSetFailure(promise, t);
