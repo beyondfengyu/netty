@@ -74,6 +74,11 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
     /**
      * Creates a new instance.
+     * TODO NioServerSocketChannel子类创建时，parent=null传入；
+     * TODO 创建了新对象：
+     *          DefaultChannelPipeline；
+     *          ChannelId
+     *          Unsafe；
      *
      * @param parent
      *        the parent of this channel. {@code null} if there's no parent.
@@ -82,6 +87,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
         this.parent = parent;
         id = newId();
         unsafe = newUnsafe();
+        // TODO 创建了DefaultChannelPipeline
         pipeline = newChannelPipeline();
     }
 
@@ -455,6 +461,12 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             return remoteAddress0();
         }
 
+        /**
+         *  TODO 绑定channel到Boss eventloop
+         *
+         * @param eventLoop
+         * @param promise
+         */
         @Override
         public final void register(EventLoop eventLoop, final ChannelPromise promise) {
             if (eventLoop == null) {
@@ -469,13 +481,15 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                         new IllegalStateException("incompatible event loop type: " + eventLoop.getClass().getName()));
                 return;
             }
-
+            // TODO 将NioServerSocketChannel绑定到boss eventLoop
             AbstractChannel.this.eventLoop = eventLoop;
 
+            // TODO 经过调试，这里就的线程不是在EventLoop线程中，所以会执行eventLoop.execute()方法
             if (eventLoop.inEventLoop()) {
                 register0(promise);
             } else {
                 try {
+                    // 此处执行时，会首次触发EventLoop的doStartThread()方法
                     eventLoop.execute(new Runnable() {
                         @Override
                         public void run() {
@@ -501,6 +515,10 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                     return;
                 }
                 boolean firstRegistration = neverRegistered;
+                /**
+                 * TODO {@link io.netty.channel.nio.AbstractNioChannel}调用JDK的Channel注册ACCEPT_EVENT事件；
+                 * TODO 绑定的Selector由绑定的EventLoop获取；
+                 */
                 doRegister();
                 neverRegistered = false;
                 registered = true;
@@ -510,6 +528,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 pipeline.invokeHandlerAddedIfNeeded();
 
                 safeSetSuccess(promise);
+                // TODO 触发处理链的注册事件
                 pipeline.fireChannelRegistered();
                 // Only fire a channelActive if the channel has never been registered. This prevents firing
                 // multiple channel actives if the channel is deregistered and re-registered.

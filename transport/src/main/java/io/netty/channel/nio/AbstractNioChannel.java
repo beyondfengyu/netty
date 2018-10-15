@@ -81,10 +81,14 @@ public abstract class AbstractNioChannel extends AbstractChannel {
      * @param readInterestOp    the ops to set to receive data from the {@link SelectableChannel}
      */
     protected AbstractNioChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
+        // TODO 初始化服务器NioServerSocketChannel时，readInterestOp = SelectionKey.OP_ACCEPT
+        // TODO 初始化服务器NioServerSocketChannel时，parent = null
         super(parent);
         this.ch = ch;
+
         this.readInterestOp = readInterestOp;
         try {
+            // TODO 设置Channel为非阻塞模式，标准JDK的NIO玩法
             ch.configureBlocking(false);
         } catch (IOException e) {
             try {
@@ -337,6 +341,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
 
             try {
                 boolean wasActive = isActive();
+                logger.info("wasActive: {}", wasActive);
                 doFinishConnect();
                 fulfillConnectPromise(connectPromise, wasActive);
             } catch (Throwable t) {
@@ -383,6 +388,11 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         boolean selected = false;
         for (;;) {
             try {
+                /**
+                 *  TODO 调用JDK的Channel注册Accept事件，传入
+                 *  TODO attachment={@link io.netty.channel.socket.nio.NioServerSocketChannel};
+                 *  TODO Selector由绑定的EventLoop获取；
+                  */
                 selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
                 return;
             } catch (CancelledKeyException e) {

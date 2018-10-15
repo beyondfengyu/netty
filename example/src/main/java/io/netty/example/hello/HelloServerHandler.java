@@ -13,9 +13,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package io.netty.example.echo;
+package io.netty.example.hello;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -23,29 +22,29 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Handler implementation for the echo server.
+ * Handler implementation for the hello server.
  */
 @Sharable
-public class EchoServerHandler extends ChannelInboundHandlerAdapter {
+public class HelloServerHandler extends ChannelInboundHandlerAdapter {
 
-    private static final Logger logger = LoggerFactory.getLogger(EchoServerHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(HelloServerHandler.class);
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         logger.info("channelRead-> {}", msg.toString());
-//        ctx.write(msg);
+//        ctx.write("Hello, I am Hello Server");
     }
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
-        ctx.flush();
+//        ctx.flush();
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         // Close the connection when an exception is raised.
-        logger.info("cause:" + cause.getMessage());
-        cause.printStackTrace();
-        ctx.close();
+//        logger.info("cause:" + cause.getMessage());
+//        cause.printStackTrace();
+//        ctx.close();
     }
 }

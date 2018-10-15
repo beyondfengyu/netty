@@ -25,12 +25,15 @@ import io.netty.util.concurrent.EventExecutor;
 import java.nio.channels.Channels;
 
 /**
+ * TODO 使一个ChannelHandler能够关联ChannelPipeline和其它的handlers。除此之外一个handler能够通知在同一个ChannelPipeline
+ * TODO 里面的下一个channelHandler，也可以动态地更改它所属的ChannelPipeline.
  * Enables a {@link ChannelHandler} to interact with its {@link ChannelPipeline}
  * and other handlers. Among other things a handler can notify the next {@link ChannelHandler} in the
  * {@link ChannelPipeline} as well as modify the {@link ChannelPipeline} it belongs to dynamically.
  *
  * <h3>Notify</h3>
- *
+ * TODO 通知
+ * TODO 其实这里的知识点应该参考{@link ChannelPipeline}的事件流转过程
  * You can notify the closest handler in the same {@link ChannelPipeline} by calling one of the various methods
  * provided here.
  *

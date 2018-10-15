@@ -498,11 +498,13 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap
     private void invokeBind(SocketAddress localAddress, ChannelPromise promise) {
         if (invokeHandler()) {
             try {
+                // TODO 执行Context中的ChannelHandler方法
                 ((ChannelOutboundHandler) handler()).bind(this, localAddress, promise);
             } catch (Throwable t) {
                 notifyOutboundHandlerException(t, promise);
             }
         } else {
+            // TODO 仅向后传播事件
             bind(localAddress, promise);
         }
     }
@@ -672,6 +674,7 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap
         if (executor.inEventLoop()) {
             next.invokeRead();
         } else {
+            // TODO 此处共用了invokeReadTask，有什么好处？
             Runnable task = next.invokeReadTask;
             if (task == null) {
                 next.invokeReadTask = task = new Runnable() {
@@ -748,6 +751,7 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap
         if (executor.inEventLoop()) {
             next.invokeFlush();
         } else {
+            // TODO 此处共用了invokeFlushTask，有什么好处？
             Runnable task = next.invokeFlushTask;
             if (task == null) {
                 next.invokeFlushTask = task = new Runnable() {
@@ -931,17 +935,41 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap
         return false;
     }
 
+    /**
+     * TODO 获取{@link DefaultChannelPipeline}的链表中下一个inbound类型的{@link ChannelHandlerContext}
+     * TODO {@link DefaultChannelPipeline}构建的事件处理链表如下：
+     * <pre>
+     *        [ Socket.read() ]               |                [ Socket.write() ]
+     *              |                                                |
+     *             \|/                                              /|\
+     *  dulex{@link DefaultChannelPipeline#head}     dulex{@link DefaultChannelPipeline#head}
+     *             \|/                                              /|\
+     *  inbound{@link AbstractChannelHandlerContext} outbound{@link AbstractChannelHandlerContext}
+     *             \|/                                              /|\
+     *  inbound{@link AbstractChannelHandlerContext} outbound{@link AbstractChannelHandlerContext}
+     *             \|/                                              /|\
+     *             ...                                              ...
+     *  outbound{@link DefaultChannelPipeline#tail}  outbound{@link DefaultChannelPipeline#tail}
+     *
+     *   =========================================================================================
+     * </pre>
+     * @return
+     */
     private AbstractChannelHandlerContext findContextInbound() {
+        logger.info("==========findContextInbound class:{}, name:{}", this.getClass().getSimpleName(), name());
         AbstractChannelHandlerContext ctx = this;
         do {
+            // TODO 此处是用next
             ctx = ctx.next;
         } while (!ctx.inbound);
         return ctx;
     }
 
     private AbstractChannelHandlerContext findContextOutbound() {
+        logger.info("==========findContextOutbound class:{}, name:{}", this.getClass().getSimpleName(), name());
         AbstractChannelHandlerContext ctx = this;
         do {
+            // TODO 此处是用prev
             ctx = ctx.prev;
         } while (!ctx.outbound);
         return ctx;
@@ -974,6 +1002,13 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap
     }
 
     /**
+     * TODO 尽最大可能探测{@link ChannelHandler#handlerAdded(ChannelHandlerContext)}是否已被调用
+     * TODO 如果{@link ChannelHandler#handlerAdded(ChannelHandlerContext)}还没有被调用过，应该直接传播事件，而不执行
+     * TODO {@link ChannelHandler}的方法。
+     * TODO 场景：当{@link DefaultChannelPipeline}已经把{@link ChannelHandler}加到处理链表时，但还没有调用{@link ChannelHandler}
+     * TODO 的{@link ChannelHandler#handlerAdded(ChannelHandlerContext)}方法时，为了满足链表的链式处理，应该向后传播事件
+     *
+     *
      * Makes best possible effort to detect if {@link ChannelHandler#handlerAdded(ChannelHandlerContext)} was called
      * yet. If not return {@code false} and if called or could not detect return {@code true}.
      *

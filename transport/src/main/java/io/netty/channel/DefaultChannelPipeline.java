@@ -393,6 +393,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
     @Override
     public final ChannelPipeline addLast(ChannelHandler... handlers) {
+        logger.info("addLast, handlers: {}", handlers[0].getClass().getCanonicalName());
         return addLast(null, handlers);
     }
 
@@ -617,6 +618,13 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         oldCtx.next = newCtx;
     }
 
+    /**
+     * TODO 检查handler是否已经存在：
+     *  1、handler不是可共享；
+     *  2、handler.added=true;
+     *
+     * @param handler
+     */
     private static void checkMultiplicity(ChannelHandler handler) {
         if (handler instanceof ChannelHandlerAdapter) {
             ChannelHandlerAdapter h = (ChannelHandlerAdapter) handler;
@@ -634,6 +642,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
             // We must call setAddComplete before calling handlerAdded. Otherwise if the handlerAdded method generates
             // any pipeline events ctx.handler() will miss them because the state will not allow it.
             ctx.setAddComplete();
+            logger.info("====sss:handler:{}, name:{}", ctx.handler().getClass().getName(), ctx.name());
             ctx.handler().handlerAdded(ctx);
         } catch (Throwable t) {
             boolean removed = false;
@@ -1355,6 +1364,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         public void bind(
                 ChannelHandlerContext ctx, SocketAddress localAddress, ChannelPromise promise)
                 throws Exception {
+            logger.info("ctx:{}, promise:{}", ctx.getClass().getCanonicalName(), promise.getClass().getCanonicalName());
             unsafe.bind(localAddress, promise);
         }
 

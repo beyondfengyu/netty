@@ -13,39 +13,56 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package io.netty.example.echo;
+package io.netty.example.hello;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandler.Sharable;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.example.echo.EchoClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Handler implementation for the echo server.
- */
-@Sharable
-public class EchoServerHandler extends ChannelInboundHandlerAdapter {
+import java.util.concurrent.TimeUnit;
 
-    private static final Logger logger = LoggerFactory.getLogger(EchoServerHandler.class);
+/**
+ * Handler implementation for the echo client.  It initiates the ping-pong
+ * traffic between the echo client and server by sending the first message to
+ * the server.
+ */
+public class HelloClientHandler extends ChannelInboundHandlerAdapter {
+
+    private static final Logger logger = LoggerFactory.getLogger(HelloClientHandler.class);
+
+
+    @Override
+    public void channelActive(ChannelHandlerContext ctx) {
+        logger.info("channelActive");
+        while(true) {
+            ctx.writeAndFlush("Hello, I am Hello Client!");
+            logger.info("=======================");
+            try {
+                TimeUnit.SECONDS.sleep(3);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        logger.info("channelRead-> {}", msg.toString());
-//        ctx.write(msg);
+        logger.info(msg.toString());
     }
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
-        ctx.flush();
+        logger.info("channelReadComplete");
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         // Close the connection when an exception is raised.
-        logger.info("cause:" + cause.getMessage());
-        cause.printStackTrace();
-        ctx.close();
+//        cause.printStackTrace();
+//        ctx.close();
     }
 }

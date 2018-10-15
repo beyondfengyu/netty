@@ -15,10 +15,24 @@
  */
 package io.netty.util.concurrent;
 
+import io.netty.util.internal.logging.InternalLogger;
+import io.netty.util.internal.logging.InternalLoggerFactory;
+
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
+/**
+ * ThreadPerTaskExecutor是{@link SingleThreadEventExecutor} 的属性{@link SingleThreadEventExecutor#executor}的实现对象；
+ * {@link ThreadFactory}的实现类为{@link DefaultThreadFactory}
+ */
 public final class ThreadPerTaskExecutor implements Executor {
+
+    /**
+     * TODO 增加日志组件
+     */
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(ThreadPerTaskExecutor.class);
+
+
     private final ThreadFactory threadFactory;
 
     public ThreadPerTaskExecutor(ThreadFactory threadFactory) {
@@ -30,6 +44,7 @@ public final class ThreadPerTaskExecutor implements Executor {
 
     @Override
     public void execute(Runnable command) {
+        logger.info("execute Runnable command");
         threadFactory.newThread(command).start();
     }
 }

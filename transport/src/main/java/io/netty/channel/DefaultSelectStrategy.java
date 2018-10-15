@@ -15,18 +15,32 @@
  */
 package io.netty.channel;
 
+import io.netty.channel.nio.NioEventLoop;
 import io.netty.util.IntSupplier;
+import io.netty.util.internal.logging.InternalLogger;
+import io.netty.util.internal.logging.InternalLoggerFactory;
 
 /**
  * Default select strategy.
  */
 final class DefaultSelectStrategy implements SelectStrategy {
+    // TODO 增加日志组件
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(DefaultSelectStrategy.class);
+
     static final SelectStrategy INSTANCE = new DefaultSelectStrategy();
 
     private DefaultSelectStrategy() { }
 
     @Override
     public int calculateStrategy(IntSupplier selectSupplier, boolean hasTasks) throws Exception {
+//        if (hasTasks) {
+//            int get = selectSupplier.get();
+//            logger.info("calculateStrategy" + hasTasks +", " + get);
+//            return get;
+//        } else {
+//            logger.info(hasTasks +", " + SelectStrategy.SELECT);
+//            return SelectStrategy.SELECT;
+//        }
         return hasTasks ? selectSupplier.get() : SelectStrategy.SELECT;
     }
 }

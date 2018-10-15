@@ -21,6 +21,8 @@ import io.netty.util.concurrent.SingleThreadEventExecutor;
 import io.netty.util.internal.ObjectUtil;
 import io.netty.util.internal.SystemPropertyUtil;
 import io.netty.util.internal.UnstableApi;
+import io.netty.util.internal.logging.InternalLogger;
+import io.netty.util.internal.logging.Slf4JLoggerFactory;
 
 import java.util.Queue;
 import java.util.concurrent.Executor;
@@ -31,7 +33,7 @@ import java.util.concurrent.ThreadFactory;
  *
  */
 public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor implements EventLoop {
-
+    protected static final InternalLogger logger = Slf4JLoggerFactory.getInstance(SingleThreadEventLoop.class);
     protected static final int DEFAULT_MAX_PENDING_TASKS = Math.max(16,
             SystemPropertyUtil.getInt("io.netty.eventLoop.maxPendingTasks", Integer.MAX_VALUE));
 
@@ -69,8 +71,17 @@ public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor im
         return (EventLoop) super.next();
     }
 
+    /**
+     * TODO 注册channel到当前的eventloop；
+     * TODO 创建了新对象：
+     *      DefaultChannelPromise
+     *
+     * @param channel
+     * @return
+     */
     @Override
     public ChannelFuture register(Channel channel) {
+        logger.info("register -> new DefaultChannelPromise(channel, this)");
         return register(new DefaultChannelPromise(channel, this));
     }
 

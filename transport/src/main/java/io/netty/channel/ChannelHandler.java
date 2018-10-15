@@ -26,6 +26,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * TODO 处理IO事件或者拦截IO操作，然后转发给同在一个pipeline里面的下一个handler。
+ *
  * Handles an I/O event or intercepts an I/O operation, and forwards it to its next handler in
  * its {@link ChannelPipeline}.
  *
@@ -50,6 +52,8 @@ import java.lang.annotation.Target;
  * </p>
  *
  * <h3>The context object</h3>
+ * TODO ChannelHandler总是包装在{@link ChannelHandlerContext}里面来使用。
+ *
  * <p>
  * A {@link ChannelHandler} is provided with a {@link ChannelHandlerContext}
  * object.  A {@link ChannelHandler} is supposed to interact with the

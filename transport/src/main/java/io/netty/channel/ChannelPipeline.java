@@ -29,6 +29,10 @@ import java.util.NoSuchElementException;
 
 
 /**
+ * TODO 什么是ChannelPipeline？它就是一个{@link ChannelHandler}的链表，用于处理或者拦截一个{@link Channel}的入站事件
+ * TODO 和出站操作。ChannelPipeline实现了一种高级的拦截链，使用户能够完全控制一个事件的处理及控制{@link ChannelHandler}
+ * TODO 之间的相互作用，如：ChannelHandler是否触发调用下一个ChannelHandler。
+ *
  * A list of {@link ChannelHandler}s which handles or intercepts inbound events and outbound operations of a
  * {@link Channel}.  {@link ChannelPipeline} implements an advanced form of the
  * <a href="http://www.oracle.com/technetwork/java/interceptingfilter-142169.html">Intercepting Filter</a> pattern
@@ -36,10 +40,16 @@ import java.util.NoSuchElementException;
  * interact with each other.
  *
  * <h3>Creation of a pipeline</h3>
+ * TODO 如何创建一个pipeline？参考{@link AbstractChannel#AbstractChannel(Channel parent)}
  *
  * Each channel has its own pipeline and it is created automatically when a new channel is created.
  *
  * <h3>How an event flows in a pipeline</h3>
+ * TODO 一个事件怎样在pipeline里面流转？
+ * TODO 前面说过，pipeline其实是一个{@link ChannelHandler}的双向链表，如：A↔B↔C，假设A、B、C都可以处理入站和出站事件
+ * TODO 若有一个入站事件E1发生，那么这个E1在pipeline里面的处理顺序为：A→B→C；若有一个出站事件E2发生，那么这个E2在
+ * TODO pipeline里面的处理顺序为：C→B→A。
+ * TODO 请注意这一点，无论哪一种事件（入站或出站），链表的头部（如：A）总是最接近外部的实际读写接口。
  *
  * The following diagram describes how I/O events are processed by {@link ChannelHandler}s in a {@link ChannelPipeline}
  * typically. An I/O event is handled by either a {@link ChannelInboundHandler} or a {@link ChannelOutboundHandler}
@@ -124,6 +134,7 @@ import java.util.NoSuchElementException;
  * </ul>
  *
  * <h3>Forwarding an event to the next handler</h3>
+ * TODO 转发事件到下一个handler
  *
  * As you might noticed in the diagram shows, a handler has to invoke the event propagation methods in
  * {@link ChannelHandlerContext} to forward an event to its next handler.  Those methods include:
@@ -198,6 +209,10 @@ import java.util.NoSuchElementException;
  *
  * pipeline.addLast("decoder", new MyProtocolDecoder());
  * pipeline.addLast("encoder", new MyProtocolEncoder());
+ *
+ * // TODO 这里建议不要把耗时的操作放在I/0线程里面执行，应该新建一个eventloopGroup，
+ * // TODO 在pipeline加入handler时为该handler指定一个eventloopGroup，用于执行handler的方法。
+ * // TODO 如果handler处理的业务是异步的或者耗时比较短，则不需要为handler指定eventloopGroup。
  *
  * // Tell the pipeline to run MyBusinessLogicHandler's event handler methods
  * // in a different thread than an I/O thread so that the I/O thread is not blocked by

@@ -278,6 +278,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
 
         try {
+            logger.info("NioEventLoop register, interestOps:{}, task:{}", interestOps, task.getClass().getCanonicalName());
             ch.register(selector, interestOps, task);
         } catch (Exception e) {
             throw new EventLoopException("failed to register a channel", e);
@@ -383,9 +384,11 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
     @Override
     protected void run() {
+        logger.info("NioEventLoop run() start ====");
         for (;;) {
             try {
-                switch (selectStrategy.calculateStrategy(selectNowSupplier, hasTasks())) {
+                int strategy = selectStrategy.calculateStrategy(selectNowSupplier, hasTasks());
+                switch (strategy) {
                     case SelectStrategy.CONTINUE:
                         continue;
                     case SelectStrategy.SELECT:
@@ -423,6 +426,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                             selector.wakeup();
                         }
                         // fall through
+                        break;
                     default:
                 }
 
@@ -517,7 +521,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         if (selectedKeys.isEmpty()) {
             return;
         }
-
+        logger.info("selectedKeys 2:{}", selectedKeys);
         Iterator<SelectionKey> i = selectedKeys.iterator();
         for (;;) {
             final SelectionKey k = i.next();
@@ -698,7 +702,9 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
     int selectNow() throws IOException {
         try {
-            return selector.selectNow();
+            int result = selector.selectNow();
+            logger.info("selectNow:{}", result);
+            return result;
         } finally {
             // restore wakeup state if needed
             if (wakenUp.get()) {
@@ -716,6 +722,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
             for (;;) {
                 long timeoutMillis = (selectDeadLineNanos - currentTimeNanos + 500000L) / 1000000L;
+                // TODO 1.定时任务截至事时间快到了，中断本次轮询
                 if (timeoutMillis <= 0) {
                     if (selectCnt == 0) {
                         selector.selectNow();
@@ -728,15 +735,18 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 // Selector#wakeup. So we need to check task queue again before executing select operation.
                 // If we don't, the task might be pended until select operation was timed out.
                 // It might be pended until idle timeout if IdleStateHandler existed in pipeline.
+                // TODO 2.轮询过程中发现有任务加入，中断本次轮询
                 if (hasTasks() && wakenUp.compareAndSet(false, true)) {
                     selector.selectNow();
                     selectCnt = 1;
                     break;
                 }
 
+                // TODO 3.阻塞式select操作，截止到第一个定时任务的截止时间
                 int selectedKeys = selector.select(timeoutMillis);
                 selectCnt ++;
 
+                // TODO 4.阻塞式select操作后，根据状态来决定是否中断本次轮询
                 if (selectedKeys != 0 || oldWakenUp || wakenUp.get() || hasTasks() || hasScheduledTasks()) {
                     // - Selected something,
                     // - waken up by user, or
@@ -760,6 +770,8 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 }
 
                 long time = System.nanoTime();
+                // TODO 5.记录轮询时间是否大于等于timeoutMillis，判断是否为一次有效的轮询
+                // TODO 若不是一次有效的轮询，当空轮询次数超过阀值（默认512），重建selector
                 if (time - TimeUnit.MILLISECONDS.toNanos(timeoutMillis) >= currentTimeNanos) {
                     // timeoutMillis elapsed without anything selected.
                     selectCnt = 1;

@@ -50,6 +50,12 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(NioServerSocketChannel.class);
 
+    /**
+     * TODO 1、打开一条服务器的Socket Channel
+     * TODO 2、返回的是JDK的ServerSocketChannel
+     * @param provider
+     * @return
+     */
     private static ServerSocketChannel newSocket(SelectorProvider provider) {
         try {
             /**
@@ -68,7 +74,8 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
     private final ServerSocketChannelConfig config;
 
     /**
-     * Create a new instance
+     * TODO 1、创建一个服务器channel对象
+     * TODO 2、服务器启动时，ReflectiveChannelFactory反射构造
      */
     public NioServerSocketChannel() {
         this(newSocket(DEFAULT_SELECTOR_PROVIDER));
@@ -83,9 +90,14 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
 
     /**
      * Create a new instance using the given {@link ServerSocketChannel}.
+     * TODO NioServerSocketChannel的两个重要属性：
+     * TODO 1、{@link ServerSocketChannel};
+     * TODO 2、{@link NioServerSocketChannelConfig}；
+     *
      */
     public NioServerSocketChannel(ServerSocketChannel channel) {
         super(null, channel, SelectionKey.OP_ACCEPT);
+        // TODO config在这里被创建，并且关联了NioServerSocketChannel对象
         config = new NioServerSocketChannelConfig(this, javaChannel().socket());
     }
 

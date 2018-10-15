@@ -81,6 +81,7 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
     }
 
     public long deadlineNanos() {
+        System.out.println("deadline:"+deadlineNanos);
         return deadlineNanos;
     }
 

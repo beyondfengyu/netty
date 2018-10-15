@@ -137,8 +137,17 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
         return this;
     }
 
+    /**
+     * TODO 1、初始化{@link io.netty.channel.socket.nio.NioServerSocketChannel},该方法在服务器启动监听前调用；
+     * TODO 2、该方法也只是初始化Channel，没有启动服务；
+     * TODO 3、该方法在pipeline的处理链上加入{@link ServerBootstrapAcceptor}的Handler
+     *
+     * @param channel
+     * @throws Exception
+     */
     @Override
     void init(Channel channel) throws Exception {
+        // TODO 1、设置服务器Channel的option和attr
         final Map<ChannelOption<?>, Object> options = options0();
         synchronized (options) {
             setChannelOptions(channel, options, logger);
@@ -153,12 +162,14 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
             }
         }
 
-        ChannelPipeline p = channel.pipeline();
+        final ChannelPipeline p = channel.pipeline();
 
         final EventLoopGroup currentChildGroup = childGroup;
         final ChannelHandler currentChildHandler = childHandler;
         final Entry<ChannelOption<?>, Object>[] currentChildOptions;
         final Entry<AttributeKey<?>, Object>[] currentChildAttrs;
+
+        // TODO 2、设置客户端channel的option和attr
         synchronized (childOptions) {
             currentChildOptions = childOptions.entrySet().toArray(newOptionArray(0));
         }
@@ -166,7 +177,8 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
             currentChildAttrs = childAttrs.entrySet().toArray(newAttrArray(0));
         }
 
-        p.addLast(new ChannelInitializer<Channel>() {
+        // TODO 3、服务器channel处理链增加一个处理器
+        p.addLast("MyServerHandler", new ChannelInitializer<Channel>() {
             @Override
             public void initChannel(final Channel ch) throws Exception {
                 final ChannelPipeline pipeline = ch.pipeline();
@@ -174,7 +186,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
                 if (handler != null) {
                     pipeline.addLast(handler);
                 }
-
+                logger.info("eventLoop.execute -> pipeline.addLast(new ServerBootstrapAcceptor()");
                 ch.eventLoop().execute(new Runnable() {
                     @Override
                     public void run() {
